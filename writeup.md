@@ -113,7 +113,7 @@ Using the parameter set above, I trained a linear support vector machine in the 
 
 The sliding window search is built into my `find_cars` method, which also handles efficient HOG sampling through subsampling of different sized windows based on a `scale` parameter.
 
-I implemented a very simplistic 4-part tiered scaling of the windows, in `tiered_window_search`. Essentially I examine the image at through 4 differenet sized windows, where only the largest windows are applied all the way to the bottom of the image and the smallest windows are only used near the horizon points. At the smallest scale, I also limit the horizontal (x) search range to eliminate noise from the scenery on the sides of the road.
+I implemented a very simplistic 4-part tiered scaling of the windows, in `tiered_window_search`. Essentially I examine the image at through 4 differenet sized windows, where only the largest windows are applied all the way to the bottom of the image and the smallest windows are only used near the horizon points. This is because vehicles only appear at small scale near the horizon, while they can be rather large in the foreground. At the smallest scale, I also limit the horizontal (x) search range to eliminate noise from the scenery on the sides of the road.
 
 #### 2. Show some examples of test images to demonstrate how your pipeline is working.  What did you do to optimize the performance of your classifier?
 
@@ -132,31 +132,15 @@ Here are some examples of the predictions I got from the test images. Note that 
 ### Video Implementation
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (somewhat wobbly or unstable bounding boxes are ok as long as you are identifying the vehicles most of the time with minimal false positives.)
-Here's a [link to my video result](./project_video.mp4)
+I first applied the raw box-detection algorithm on the entire video, to get a view of what all the raw detections looked like. This can be viewed [here](./output_video_images/vehicles_rough2.mp4)
 
+I tried to implement a very basic scheme for discarding false positives and combining overlapping and subsequent bounding boxes but it didn't quite work before I ran out of time. I preserved a "heat map" of the previous frame's pixels that were within positive bounding boxes using a global variable `recent_heat_map`. Then I built the current frame's heat map by summing once on each pixel for every positive bounding box within which it existed, and added `recent_heat_map` to it. Then I zeroed out any pixels that had a value less than a threshold of 1 using the  `apply_threshold` function provided in the lesson. Finally, I used `scipy.ndimage.measurements.label` to identify the remaining clusters of points and used `draw_labeled_bboxes` to highlight them in the image. It didn't improve things and in fact seemed to add false positives. In any case the resulting video is called [`vehicles_filtered`.](./output_video_images/vehicles_filtered.mp4)
 
-#### 2. Describe how (and identify where in your code) you implemented some kind of filter for false positives and some method for combining overlapping bounding boxes.
-
-I recorded the positions of positive detections in each frame of the video.  From the positive detections I created a heatmap and then thresholded that map to identify vehicle positions.  I then used `scipy.ndimage.measurements.label()` to identify individual blobs in the heatmap.  I then assumed each blob corresponded to a vehicle.  I constructed bounding boxes to cover the area of each blob detected.  
-
-Here's an example result showing the heatmap from a series of frames of video, the result of `scipy.ndimage.measurements.label()` and the bounding boxes then overlaid on the last frame of video:
-
-### Here are six frames and their corresponding heatmaps:
-
-![alt text][image5]
-
-### Here is the output of `scipy.ndimage.measurements.label()` on the integrated heatmap from all six frames:
-![alt text][image6]
-
-### Here the resulting bounding boxes are drawn onto the last frame in the series:
-![alt text][image7]
-
-
-
----
 
 ### Discussion
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+I was a bit surprised at the fact that all the features I hand-picked to use ended up not being very effective (e.g. the histogram of the RGB color scale). I also noticed that the training images i saw all seemed to be a bit darker than the test images. I wonder if that had anything to do with the difficulties I had training. All these failures around figuring out classification rules makes me wonder if this project would have been more easily accomplished using a neural net.
+
+In general, I didn't have great success with this classification algorithm. One big problem was that I ran out of time to properly implement a detector for multiples and false positives. To do that correctly would probably involve a much more sophisticated way of tracking the state of predictions, over more than just one previous frame.

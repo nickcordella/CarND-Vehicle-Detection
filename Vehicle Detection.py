@@ -3,7 +3,7 @@
 
 # ## Import Packages
 
-# In[4]:
+# In[1]:
 
 
 import matplotlib.image as mpimg
@@ -23,7 +23,7 @@ get_ipython().run_line_magic('matplotlib', 'inline')
 # ## Define Detection Functions
 # These are largely derived from the "Object Detection" Lesson
 
-# In[63]:
+# In[2]:
 
 
 # Define a function to return HOG features and visualization
@@ -249,47 +249,10 @@ def search_windows(img, windows, clf, scaler, color_space='RGB',
     #8) Return windows for positive detections
     return on_windows
 
-# Define a function that generates a heatmap from a list of bboxes
-def add_heat(heatmap, bbox_list):
-    # Iterate through list of bboxes
-    for box in bbox_list:
-        # Add += 1 for all pixels inside each bbox
-        # Assuming each "box" takes the form ((x1, y1), (x2, y2))
-        heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
-
-    # Return updated heatmap
-    return heatmap# Iterate through list of bboxes
-    
-# Define a function that thresholds heatmap to filter out noise
-def apply_threshold(heatmap, threshold):
-    # Zero out pixels below the threshold
-    heatmap[heatmap <= threshold] = 0
-    # Return thresholded map
-    return heatmap
-
-from scipy.ndimage.measurements import label
-
-# Define a function that draws bboxes around an image with distinct features
-def draw_labeled_bboxes(img, labels):
-    labels = label(img)
-    # Iterate through all detected cars
-    for car_number in range(1, labels[1]+1):
-        # Find pixels with each car_number label value
-        nonzero = (labels[0] == car_number).nonzero()
-        # Identify x and y values of those pixels
-        nonzeroy = np.array(nonzero[0])
-        nonzerox = np.array(nonzero[1])
-        # Define a bounding box based on min/max x and y
-        bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
-        # Draw the box on the image
-        cv2.rectangle(img, bbox[0], bbox[1], (0,0,255), 6)
-    # Return the image
-    return img
-
 
 # ## Data Exploration
 
-# In[6]:
+# In[3]:
 
 
 # Read in training data sets
@@ -301,7 +264,7 @@ print('{} Car images in data set'.format(num_car_files))
 print('{} Non-car images in data set'.format(num_noncar_files))
 
 
-# In[7]:
+# In[4]:
 
 
 car_subsample = []
@@ -332,7 +295,7 @@ for rand_ind_c, rand_ind_n in ((1208,5594),(2641,8582),(4217,2820),(5757,4035)):
 # ## Feature Extraction
 # ### Color Exploration
 
-# In[8]:
+# In[5]:
 
 
 # Define a function that takes a list of images (same type), adds up their histograms for each color channel
@@ -386,7 +349,7 @@ for color in color_spaces:
 
 # ### HOG Parameters
 
-# In[23]:
+# In[6]:
 
 
 # Function that accepts an image and a color space and HOG images of all channels
@@ -408,7 +371,7 @@ def hog_plotter(image_name, color_space, orient=8, pix_per_cell=8, cell_per_bloc
     plt.imshow(hog_image3)
 
 
-# In[19]:
+# In[7]:
 
 
 for ind in range(len(car_subsample)):
@@ -446,7 +409,7 @@ for ind in range(len(car_subsample)):
 
 # #### Less Cells per block
 
-# In[33]:
+# In[8]:
 
 
 for ind in range(len(car_subsample)):
@@ -462,7 +425,7 @@ for ind in range(len(car_subsample)):
 
 # ### Training the linear classifier
 
-# In[118]:
+# In[10]:
 
 
 from sklearn.model_selection import train_test_split
@@ -478,11 +441,11 @@ spatial_feat = False
 
 car_features = extract_features(car_files, color_space=color_space, hist_bins=hist_bins, spatial_size=spatial_size,
                                 orient=orient, pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel='ALL',
-                                spatial_feat=False, hist_feat=True, hog_feat = True)
+                                spatial_feat=spatial_feat, hist_feat=True, hog_feat = True)
 
 notcar_features = extract_features(noncar_files, color_space=color_space, hist_bins=hist_bins,
                                 orient=orient, pix_per_cell=pix_per_cell, cell_per_block=cell_per_block, hog_channel='ALL',
-                                spatial_feat=False, hist_feat=True, hog_feat = True)
+                                spatial_feat=spatial_feat, hist_feat=True, hog_feat = True)
 
 # Create an array stack of feature vectors
 X = np.vstack((car_features, notcar_features)).astype(np.float64)
@@ -530,7 +493,7 @@ fig = plt.figure(figsize=(15,12))
 plt.imshow(img)
 
 
-# In[134]:
+# In[11]:
 
 
 
@@ -607,7 +570,7 @@ def find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scal
 
 # ### Playing around with windows and scale
 
-# In[147]:
+# In[12]:
 
 
 def tiered_window_search(image):
@@ -616,7 +579,79 @@ def tiered_window_search(image):
     xstart = 500
     xstop = 850
     ystart = 400
-    ystop = 450
+    ystop = 475
+    scale = 0.5
+
+    bboxes = bboxes + find_cars(image, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    xstart = 0
+    xstop = 1200
+    ystart = 400
+    ystop = 550
+    scale = 1
+    
+    bboxes = bboxes + find_cars(image, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    ystart = 400
+    ystop = 650
+    scale = 1.5
+    
+    bboxes = bboxes + find_cars(image, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    ystart = 450
+    ystop = 700
+    scale = 2
+    
+    bboxes = bboxes + find_cars(image, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    return bboxes
+
+
+# In[13]:
+
+
+get_ipython().run_line_magic('matplotlib', 'inline')
+test_files = glob.glob('./test_images/*.jpg')
+
+for filename in test_files:
+    img = mpimg.imread(filename)
+    draw_img = np.copy(img)
+
+    bboxes = tiered_window_search(img)
+    
+    for bbx in bboxes:
+        cv2.rectangle(draw_img,bbx[0],bbx[1],(0,0,255),6)
+    fig = plt.figure(figsize=(15,9))
+    plt.imshow(draw_img)
+    plt.savefig('output_images/test_bboxes_{}'.format(filename.split('/')[-1]))
+
+
+# ## Video Generation
+
+# In[14]:
+
+
+# Import everything needed to edit/save/watch video clips
+from moviepy.editor import VideoFileClip
+from IPython.display import HTML
+import os
+
+
+# In[15]:
+
+
+def tiered_window_search_video(img):
+    draw_img = np.copy(img)
+    bboxes = []
+    
+    xstart = 500
+    xstop = 850
+    ystart = 400
+    ystop = 475
     scale = 0.5
 
     bboxes = bboxes + find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
@@ -645,24 +680,159 @@ def tiered_window_search(image):
     bboxes = bboxes + find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
                         orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
     
-    return bboxes
-
-
-# In[148]:
-
-
-get_ipython().run_line_magic('matplotlib', 'inline')
-test_files = glob.glob('./test_images/*.jpg')
-
-for filename in test_files:
-    img = mpimg.imread(filename)
-    draw_img = np.copy(img)
-
-    bboxes = tiered_window_search(img)
-    
     for bbx in bboxes:
         cv2.rectangle(draw_img,bbx[0],bbx[1],(0,0,255),6)
-    fig = plt.figure(figsize=(15,9))
-    plt.imshow(draw_img)
-    plt.savefig('output_images/test_bboxes_{}'.format(filename.split('/')[-1]))
+    return draw_img
+
+
+# In[19]:
+
+
+out_video_dir = "output_video_images"
+if not os.path.exists(out_video_dir):
+    os.mkdir(out_video_dir)
+video_output = out_video_dir + '/vehicles_rough2.mp4'
+## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
+## To do so add .subclip(start_second,end_second) to the end of the line below
+## Where start_second and end_second are integer values representing the start and end of the subclip
+## You may also uncomment the following line for a subclip of the first 5 seconds
+# clip1 = VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
+video_clip = VideoFileClip("project_video.mp4")
+clip = video_clip.fl_image(tiered_window_search_video) #NOTE: this function expects color images!!
+get_ipython().run_line_magic('time', 'clip.write_videofile(video_output, audio=False)')
+
+
+# In[20]:
+
+
+HTML("""
+<video width="960" height="540" controls>
+  <source src="{0}">
+</video>
+""".format(video_output))
+
+
+# In[29]:
+
+
+from scipy.ndimage.measurements import label
+
+# Define a function that generates a heatmap from a list of bboxes
+def add_heat(heatmap, bbox_list):
+    # Iterate through list of bboxes
+    for box in bbox_list:
+        # Add += 1 for all pixels inside each bbox
+        # Assuming each "box" takes the form ((x1, y1), (x2, y2))
+        heatmap[box[0][1]:box[1][1], box[0][0]:box[1][0]] += 1
+
+    # Return updated heatmap
+    return heatmap
+    
+# Define a function that thresholds heatmap to filter out noise
+def apply_threshold(heatmap, threshold):
+    # Zero out pixels below the threshold
+    heatmap[heatmap <= threshold] = 0
+    # Return thresholded map
+    return heatmap
+
+from scipy.ndimage.measurements import label
+
+# Define a function that draws bboxes around an image with distinct features
+def draw_labeled_bboxes(img, labels):
+    labels = label(img)
+    # Iterate through all detected cars
+    for car_number in range(1, labels[1]+1):
+        # Find pixels with each car_number label value
+        nonzero = (labels[0] == car_number).nonzero()
+        # Identify x and y values of those pixels
+        nonzeroy = np.array(nonzero[0])
+        nonzerox = np.array(nonzero[1])
+        # Define a bounding box based on min/max x and y
+        bbox = ((np.min(nonzerox), np.min(nonzeroy)), (np.max(nonzerox), np.max(nonzeroy)))
+        # Draw the box on the image
+        cv2.rectangle(img, bbox[0], bbox[1], (0,255,), 20)
+    # Return the image
+    return img
+
+def tiered_window_search_smoothed(img):
+    
+    global recent_heat_maps, frame_ind
+    
+    draw_img = np.copy(img)
+    bboxes = []
+    
+    xstart = 500
+    xstop = 850
+    ystart = 400
+    ystop = 475
+    scale = 0.5
+
+    bboxes = bboxes + find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    xstart = 0
+    xstop = 1200
+    ystart = 400
+    ystop = 550
+    scale = 1
+    
+    bboxes = bboxes + find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    ystart = 400
+    ystop = 650
+    scale = 1.5
+    
+    bboxes = bboxes + find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    ystart = 450
+    ystop = 700
+    scale = 2
+    
+    bboxes = bboxes + find_cars(img, color_space, xstart, xstop, ystart, ystop, scale, svc, X_scaler,
+                        orient, pix_per_cell, cell_per_block, spatial_size, hist_bins, spatial_feat)
+    
+    if (frame_ind == 0):
+        recent_heat_map = np.zeros_like(img[:,:,0]).astype(np.float)
+
+    heat_map = add_heat(recent_heat_map, bboxes)
+    heat_map = apply_threshold(heat_map,1)
+    labels = label(heat_map)
+
+    draw_img = draw_labeled_bboxes(draw_img, labels)
+    
+    recent_heat_map = apply_threshold(recent_heat_map, 1)
+    frame_ind = 0
+        
+    return draw_img
+
+
+# In[30]:
+
+
+frame_ind = 0
+
+out_video_dir = "output_video_images"
+if not os.path.exists(out_video_dir):
+    os.mkdir(out_video_dir)
+video_output = out_video_dir + '/vehicles_filtered.mp4'
+## To speed up the testing process you may want to try your pipeline on a shorter subclip of the video
+## To do so add .subclip(start_second,end_second) to the end of the line below
+## Where start_second and end_second are integer values representing the start and end of the subclip
+## You may also uncomment the following line for a subclip of the first 5 seconds
+# clip1 = VideoFileClip("test_videos/solidWhiteRight.mp4").subclip(0,5)
+video_clip = VideoFileClip("project_video.mp4")
+clip = video_clip.fl_image(tiered_window_search_smoothed) #NOTE: this function expects color images!!
+get_ipython().run_line_magic('time', 'clip.write_videofile(video_output, audio=False)')
+
+
+# In[31]:
+
+
+HTML("""
+<video width="960" height="540" controls>
+  <source src="{0}">
+</video>
+""".format(video_output))
 
